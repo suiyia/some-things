@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="shortcut icon" th:href="@{/imgs/icon_01.png}">
+    <link href="https://cdn.bootcss.com/twitter-bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcss.com/bootstrap-table/1.12.2/bootstrap-table.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <script src="https://cdn.bootcss.com/twitter-bootstrap/3.2.0/js/bootstrap.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.12.2/bootstrap-table.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.12.2/locale/bootstrap-table-zh-CN.min.js"></script>
+</head>
+<body>
+    <div>
+        <div class="container">
+            <div class="jumbotron" style="margin-top: 3px;padding-top:3px;padding-bottom: 3px;margin-bottom: 5px">
+                <h1>CallBack</h1>
+                <p>Get and show requests from everywhere !</p>
+                <p><a class="btn btn-primary btn-lg" href="#" role="button">Learn more</a></p>
+            </div>
+            <div style="display:flex;align-items:center;margin-bottom: 5px">
+                <button type="button" class="btn btn-primary" style="margin-right: 5px" onclick="btn_random()">生成随机回调地址</button>
+                <input class="form-control" id="calidinput" type="text" placeholder="calid" readonly>
+            </div>
+            <input class="form-control" id="requestinput" type="text" placeholder="回调地址" readonly>
+            <table id="table">
+                <thead>
+                <tr>
+                    <th data-field="id">id</th>
+                    <th data-field="queryid">calid</th>
+                    <th data-field="requesttime" data-sortable="true">requesttime</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+
+
+
+<script>
+    var ip = '144.34.199.31';
+    var rootpath = '/callback'
+
+    $('#table').bootstrapTable({
+        height: 800,  // 表格高度
+        // striped: true,  // 隔行颜色
+        pageSize: 20,
+        pageList: [20, 30, 50, 100],
+        pagination: true,  // 是否分页
+        search: true,  // 是否开启搜索
+        showRefresh: true,  // 是否显示刷新按钮。
+        showColumns: true,
+        showPaginationSwitch: true,
+        showToggle: true,  // 是否显示切换视图（table/card）按钮。
+        showFullscreen: true,
+        detailView: true,
+        searchAlign: 'left',
+        buttonsAlign: 'left', // 指定 按钮栏 水平方向的位置。
+        sidePagination: 'server',  // 分页在 服务端
+        url: 'getallrequest',  // 请求数据路径
+        queryParams: queryParams,  // 请求分页数据参数
+        detailFormatter: detailFormatter,
+        responseHandler: responseHandler,
+        rowStyle: rowStyle,
+        onClickRow: onClickRow,
+        onLoadSuccess:onLoadSuccess
+    });
+
+    // 从服务加载的数据进行处理
+    function responseHandler(res) {
+        console.log(res)  // 进行一些操作
+        return res;  // 写了这个函数 就一定要返回  https://segmentfault.com/q/1010000009168739
+    }
+    
+
+    // 行点击事件
+    function onClickRow(row, $element,field) {
+
+        // https://stackoverflow.com/questions/37133505/how-does-click-cell-bs-table-works
+        if($element.next().is('tr.detail-view')){
+            $('#table').bootstrapTable('collapseRow',$element.data('index'));
+        }else {
+            $('#table').bootstrapTable('expandRow',$element.data('index'));
+        }
+
+    }
+
+    function onLoadSuccess(data){
+        console.log(data)
+    }
+
+
+    // 某一行具体详情
+    function detailFormatter(index, row) {
+        var html = [];
+        $.each(row, function (key, value) {
+            if (key == 'request') {
+                // var result = JSON.stringify(value, null, 2);
+                html.push('<div><pre>'+JsonFormat(value)+'</pre></div>');
+            }
+        });
+        return html.join('');
+    }
+
+    // 表格行样式
+    function rowStyle(row, index) {
+        console.log(index+','+index%4);
+        var classes = ['active', 'success', 'info', 'warning', 'danger'];
+        return {
+            classes: classes[index % 5]
+        };
+
+    }
+
+    // HTTP 请求的分页参数
+    function queryParams(params) {
+        return {
+            search: params.search,
+            sort: params.sort,
+            order: params.order,
+            offset: params.offset,
+            limit: params.limit
+        };
+    }
+
+    function JsonFormat(json) {
+        if (typeof json != 'string') {
+            json = JSON.stringify(json, undefined, 2);
+        }
+        json = json.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
+
+    function btn_random() {
+        var temp = randomString(Math.floor(Math.random()*32));
+        $('#calidinput').val(temp);
+        $('#requestinput').val('http://'+ip+rootpath+'/request?calid='+temp);
+    }
+
+    // 获取指定长度的字符串
+    function randomString(len) {
+        len = len || 32;
+        var $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
+        /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+        var maxPos = $chars.length;
+        var pwd = '';
+        for (i = 0; i < len; i++) {
+            pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+        }
+        return pwd;
+    }
+
+
+</script>
+</body>
+</html>
